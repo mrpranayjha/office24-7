@@ -1,0 +1,88 @@
+import os
+import subprocess
+import sys
+
+# Stream configuration
+STREAM_URL = os.getenv("live_1546915000_CyHQRHDFlgVtzwra4qnA6OGbTndd2z", "http://47.181.86.62:8082/mjpg/video.mjpg")
+AUDIO_FILE = "officeambience.mp3"
+
+# Fetch Twitch stream key from Railway Environment Variables
+TWITCH_STREAM_KEY = os.getenv("TWITCH_STREAM_KEY")
+
+if not TWITCH_STREAM_KEY:
+    print("Error: TWITCH_STREAM_KEY environment variable is not set.")
+    sys.exit(1)
+
+TWITCH_RTMP_URL = f"rtmp://live.twitch.tv/app/{TWITCH_STREAM_KEY}"
+
+
+def stream_to_twitch():
+    ffmpeg_cmd = [
+        "ffmpeg",
+        # Input 0: Video Stream
+        "-use_wallclock_as_timestamps",
+        "1",
+        "-i",
+        STREAM_URL,
+        # Input 1: Background Audio (Loop indefinitely)
+        "-stream_loop",
+        "-1",
+        "-i",
+        AUDIO_FILE,
+        # Framing & Synchronization
+        "-r",
+        "15",
+        # Video encoding parameters
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-tune",
+        "zerolatency",
+        "-g",
+        "30",  # Keyframe every 2 seconds (15 fps * 2s)
+        "-b:v",
+        "1500k",
+        "-maxrate",
+        "1500k",
+        "-bufsize",
+        "3000k",
+        "-pix_fmt",
+        "yuv420p",
+        # Audio encoding parameters (map Input 1 as audio track)
+        "-map",
+        "0:v:0",
+        "-map",
+        "1:a:0",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
+        "-shortest",  # Sync outputs safely
+        # Output format
+        "-f",
+        "flv",
+        TWITCH_RTMP_URL,
+    ]
+
+    print("Starting continuous stream to Twitch...")
+
+    try:
+        process = subprocess.Popen(
+            ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        )
+
+        for line in process.stdout:
+            print(line, end="")
+
+        process.wait()
+
+    except KeyboardInterrupt:
+        print("\nStopping stream...")
+        process.terminate()
+    except Exception as e:
+        print(f"Error: {e}")
+
+
+if __name__ == "__main__":
+    stream_to_twitch()
