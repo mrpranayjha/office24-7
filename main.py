@@ -3,11 +3,11 @@ import subprocess
 import sys
 
 # Stream configuration
-STREAM_URL = os.getenv("live_1546915000_CyHQRHDFlgVtzwra4qnA6OGbTndd2z", "http://47.181.86.62:8082/mjpg/video.mjpg")
+STREAM_URL = os.getenv("MJPEG_STREAM_URL", "http://47.181.86.62:8082/mjpg/video.mjpg")
 AUDIO_FILE = "officeambience.mp3"
 
-# Fetch Twitch stream key from Railway Environment Variables
-TWITCH_STREAM_KEY = os.getenv("TWITCH_STREAM_KEY")
+# Fetch Twitch stream key from Environment Variables
+TWITCH_STREAM_KEY = os.getenv("live_1546915000_CyHQRHDFlgVtzwra4qnA6OGbTndd2z")
 
 if not TWITCH_STREAM_KEY:
     print("Error: TWITCH_STREAM_KEY environment variable is not set.")
@@ -19,49 +19,35 @@ TWITCH_RTMP_URL = f"rtmp://live.twitch.tv/app/{TWITCH_STREAM_KEY}"
 def stream_to_twitch():
     ffmpeg_cmd = [
         "ffmpeg",
-        # Input 0: Video Stream
-        "-use_wallclock_as_timestamps",
-        "1",
-        "-i",
-        STREAM_URL,
-        # Input 1: Background Audio (Loop indefinitely)
-        "-stream_loop",
-        "-1",
-        "-i",
-        AUDIO_FILE,
-        # Framing & Synchronization
-        "-r",
-        "15",
+        # Input 0: Video Stream (MJPEG)
+        "-use_wallclock_as_timestamps", "1",
+        "-i", STREAM_URL,
+        
+        # Input 1: Background Audio (Loop infinitely)
+        "-stream_loop", "-1",
+        "-i", AUDIO_FILE,
+        
         # Video encoding parameters
-        "-c:v",
-        "libx264",
-        "-preset",
-        "ultrafast",
-        "-tune",
-        "zerolatency",
-        "-g",
-        "30",  # Keyframe every 2 seconds (15 fps * 2s)
-        "-b:v",
-        "1500k",
-        "-maxrate",
-        "1500k",
-        "-bufsize",
-        "3000k",
-        "-pix_fmt",
-        "yuv420p",
-        # Audio encoding parameters (map Input 1 as audio track)
-        "-map",
-        "0:v:0",
-        "-map",
-        "1:a:0",
-        "-c:a",
-        "aac",
-        "-b:a",
-        "128k",
-        "-shortest",  # Sync outputs safely
+        "-r", "15",
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-tune", "zerolatency",
+        "-g", "30",  # Keyframe every 2 seconds (15 fps * 2s)
+        "-b:v", "1500k",
+        "-maxrate", "1500k",
+        "-bufsize", "3000k",
+        "-pix_fmt", "yuv420p",
+        
+        # Audio encoding parameters
+        "-c:a", "aac",
+        "-b:a", "128k",
+        
+        # Stream Mapping
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        
         # Output format
-        "-f",
-        "flv",
+        "-f", "flv",
         TWITCH_RTMP_URL,
     ]
 
